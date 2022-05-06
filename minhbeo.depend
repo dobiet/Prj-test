@@ -1,0 +1,80 @@
+# depslib dependency file v1.0
+1651593518 source:c:\users\lataon\documents\minhbeo\commonfunc.cpp
+	"commonFunc.h"
+
+1651820938 c:\users\lataon\documents\minhbeo\commonfunc.h
+	"include.h"
+
+1651428965 c:\users\lataon\documents\minhbeo\include.h
+	<windows.h>
+	<vector>
+	<string>
+	<SDL.h>
+	<SDL_image.h>
+	<SDL_mixer.h>
+	<SDL_ttf.h>
+	<iostream>
+	<sstream>
+	<cmath>
+
+1651821487 source:c:\users\lataon\documents\minhbeo\game.cpp
+	"include.h"
+	"Object.h"
+	"Game.h"
+	"Map.h"
+	"Object.h"
+	"commonFunc.h"
+
+1651648445 c:\users\lataon\documents\minhbeo\object.h
+	"Texture.h"
+	"Weapon.h"
+	"commonFunc.h"
+	"Map.h"
+
+1651306517 c:\users\lataon\documents\minhbeo\texture.h
+	"include.h"
+	"commonFunc.h"
+
+1651546338 c:\users\lataon\documents\minhbeo\weapon.h
+	"commonFunc.h"
+	"Texture.h"
+	"Timer.h"
+
+1651569326 c:\users\lataon\documents\minhbeo\timer.h
+
+1651167585 c:\users\lataon\documents\minhbeo\map.h
+	"Texture.h"
+	"commonFunc.h"
+
+1651821195 c:\users\lataon\documents\minhbeo\game.h
+
+1651821185 source:c:\users\lataon\documents\minhbeo\main.cpp
+	"include.h"
+	"commonFunc.h"
+	"Texture.h"
+	"Object.h"
+	"Game.h"
+	"Map.h"
+	"Timer.h"
+
+1651803382 source:c:\users\lataon\documents\minhbeo\map.cpp
+	"Map.h"
+	"Texture.h"
+	<fstream>
+
+1651805651 source:c:\users\lataon\documents\minhbeo\object.cpp
+	"Object.h"
+	"include.h"
+
+1650958319 source:c:\users\lataon\documents\minhbeo\texture.cpp
+	"Texture.h"
+	"Game.h"
+
+1651163946 source:c:\users\lataon\documents\minhbeo\timer.cpp
+	"Timer.h"
+	"CommonFunc.h"
+
+1651801375 source:c:\users\lataon\documents\minhbeo\weapon.cpp
+	"commonFunc.h"
+	"Weapon.h"
+
