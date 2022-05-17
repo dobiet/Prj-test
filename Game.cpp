@@ -1,16 +1,10 @@
-#include "include.h"
-#include "Object.h"
 #include "Game.h"
-#include "Map.h"
-#include "Object.h"
-#include "commonFunc.h"
-
-Object* player1;
-Object* player2;
+#include <winuser.h>
 
 SDL_Renderer* Game::renderer = nullptr;
 SDL_Event Game::event;
-
+int Game::status_ = MENU;
+bool Game::gamequit = false;
 Game::Game()
 {}
 
@@ -29,101 +23,33 @@ void Game::init(const char* title, int width, int height)
         isRunning = true;
     }
 
-    player1 = new Object("img/fig.png", 4*TILE_SIZE, 5*TILE_SIZE);
-    player2 = new Object("img/fig.png", 15*TILE_SIZE, 5*TILE_SIZE);
+    if (TTF_Init() == -1){
+        isRunning = false;
+        status_ = QUIT;
+    }
+
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) == -1){
+		isRunning = false;
+		status_ = QUIT;
+	}
 
 }
 
-void Game::handleEvents()
+void Game::start_game()
 {
-    SDL_PollEvent(&event);
-    switch(event.type){
-        case SDL_QUIT:
-            isRunning = false;
-            break;
+    isRunning = true;
+    player_win = "";
+    theme_music = Mix_LoadMUS("sound/theme.mp3");
+    Mix_PlayMusic(theme_music,-1);
+    player1 = new Object("img/player/", 4*TILE_SIZE, 5*TILE_SIZE);
+    player1->set_name("player 1");
+    player1_health.Init(2, player1->get_name());
+    player2 = new Object("img/player/", 15*TILE_SIZE, 5*TILE_SIZE);
+    player2->set_name("player 2");
+    player2_health.set_direct(-1);
+    player2_health.Init(SCREEN_WIDTH-25 , player2->get_name());
 
-        case SDL_KEYDOWN:
-            switch( event.key.keysym.sym )
-            {
-                case SDLK_d:
-                    player1->status  = 1;
-                    player1->input_type_.right_ = 1;
-                    player1->input_type_.left_ = 0;
-                    break;
 
-                case SDLK_a:
-                    player1->status = 2;
-                    player1->input_type_.left_ = 1;
-                    player1->input_type_.right_ = 0;
-                    break;
-
-                case SDLK_w:
-                    player1->input_type_.jump_= 1;
-                    break;
-
-                case SDLK_t:
-                    player1->input_type_.shoot_=1;
-                    break;
-
-                case SDLK_RIGHT:
-                    player2->status  = 1;
-                    player2->input_type_.right_ = 1;
-                    break;
-
-                case SDLK_LEFT:
-                    player2->status = 2;
-                    player2->input_type_.left_ = 1;
-
-                    break;
-
-                case SDLK_UP:
-                    player2->input_type_.jump_= 1;
-                    break;
-
-                case SDLK_m:
-                    player2->input_type_.shoot_ = 1;
-                    break;
-            }
-            break;
-        case SDL_KEYUP:
-            switch( event.key.keysym.sym )
-            {
-                case SDLK_d:
-                    player1->input_type_.right_ = 0;
-                    break;
-
-                case SDLK_a:
-                    player1->input_type_.left_ = 0;
-                    break;
-
-                case SDLK_w:
-                    player1->input_type_.jump_ = 0;
-                    break;
-
-                case SDLK_t:
-                    player1->input_type_.shoot_ = 0;
-
-                case SDLK_RIGHT:
-                    player2->input_type_.right_ = 0;
-                    break;
-
-                case SDLK_LEFT:
-                    player2->input_type_.left_ = 0;
-                    break;
-
-                case SDLK_UP:
-                    player2->input_type_.jump_ = 0;
-                    break;
-
-                case SDLK_m:
-                    player2->input_type_.shoot_ = 0;
-
-                break;
-            }
-            break;
-        default:
-            break;
-    }
 }
 
 void Game::update()
@@ -136,52 +62,246 @@ void Game::render()
 {
     SDL_RenderClear(renderer);
 
+    //Backsground
     Texture backgr;
     backgr.loadFromFile("img/backGround.jpg");
     backgr.setRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     backgr.renderTexture(NULL);
+
+    //Health
+    GeometricFormat rectange_size(0, 0, SCREEN_WIDTH, 40);
+    ColorData color_data(36, 36, 36);
+    Gemometric::RenderRectange(rectange_size, color_data);
+
+    GeometricFormat outlie_size(1, 1, SCREEN_WIDTH - 1, 38);
+    ColorData color_data1(0XFF,0XFF,0XFF);
+    Gemometric::RenderOutline(outlie_size, color_data1);
+
+
+    //Load map
     Map game_map;
     game_map.loadMap("map/map.txt");
     game_map.drawMap();
 
+
+    //Figure move
     player1->doObject(game_map);
     player2->doObject(game_map);
-    player1->handleWeapon();
-    player2->handleWeapon();
 
+    //Throw weapon
+    player1->handleWeapon(game_map);
+    player2->handleWeapon(game_map);
+
+    //Check weapon vs figure
     std::vector<Weapon*> weapon_list1 = player1->get_weapon_list();
     std::vector<Weapon*> weapon_list2 = player2->get_weapon_list();
-    for(int i=0;i<weapon_list1.size();i++){
-        Weapon* p_weapon = weapon_list1.at(i);
+    for(int w=0; w<weapon_list1.size(); w++){
+        Weapon* p_weapon = weapon_list1.at(w);
         if(p_weapon){
-            /*SDL_Rect x = p_weapon->getRect();
-            SDL_Rect y = player1->GetRectFrame();
-            std::cout<<x.x<<" "<<x.y<<" "<<x.w<<" "<<x.h<<'\n';
-            std::cout<<y.x<<" "<<y.y<<" "<<y.w<<" "<<y.h<<'\n';*/
             bool check = Collision::checkCollision(p_weapon->getRect(), player1->GetRectFrame());
-            if( check ) player1->removeWeapon(i);
+            if( check ){
+                player1->removeWeapon(w);
+                player1_health.Decrease();
+            }
             bool check1 = Collision::checkCollision(p_weapon->getRect(), player2->GetRectFrame());
-            if( check1 ) player1->removeWeapon(i);
+            if( check1 ){
+                player1->removeWeapon(w);
+                player2_health.Decrease();
+            }
         }
     }
     for(int i=0;i<weapon_list2.size();i++){
         Weapon* p_weapon = weapon_list2.at(i);
         if(p_weapon){
             bool check = Collision::checkCollision(p_weapon->getRect(), player1->GetRectFrame());
-            if( check ) player2->removeWeapon(i);
+            if( check ){
+                player2->removeWeapon(i);
+                player1_health.Decrease();
+            }
             bool check1 = Collision::checkCollision(p_weapon->getRect(), player2->GetRectFrame());
-            if( check1 ) player2->removeWeapon(i);
+            if( check1 ){
+                player2->removeWeapon(i);
+                player2_health.Decrease();
+            }
         }
     }
+//Render
+    player1_health.Show();
+    player2_health.Show();
+
     player1->render();
     player2->render();
 
     SDL_RenderPresent(renderer);
+
+    if (player1_health.isAlive() == false || player2_health.isAlive() == false)
+    {
+        status_ = GAMEOVER;
+        isRunning = false;
+        if(player1_health.isAlive()) player_win = player1->get_name();
+        else player_win = player2->get_name();
+    }
+
+    int imp_time = fps.get_ticks();
+    if(imp_time < frameDelay)
+    {
+        SDL_Delay(frameDelay - imp_time);
+    }
+
 }
 
 void Game::clean()
 {
-    SDL_DestroyWindow(window);
+    fps.stop();
+    Mix_FreeMusic(theme_music);
+    delete player1;
+    delete player2;
+    player1_health.Free();
+    player2_health.Free();
+}
+
+void Game::close()
+{
+    theme_music = NULL;
+    renderer = NULL;
+    window = NULL;
+    Mix_FreeMusic(theme_music);
     SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+
+    Mix_Quit();
+    TTF_Quit();
+    IMG_Quit();
     SDL_Quit();
+}
+
+void Game::game_over()
+{
+    Mix_Music* victory_sound = Mix_LoadMUS("sound/victory.mp3");
+    Mix_PlayMusic(victory_sound, -1);
+    Mix_Chunk* click_sound = Mix_LoadWAV("sound/click.wav");
+
+    Texture new_game_button;
+    new_game_button.setRect(SCREEN_WIDTH/2-90,300,180,60);
+    Texture menu_button;
+    menu_button.setRect(SCREEN_WIDTH/2-90,400,180,60);
+
+    TTF_Font* font_text = TTF_OpenFont("font/MatchupPro.ttf", 80);
+    Texture victory_text;
+    while(Game::status_ == GAMEOVER){
+        SDL_PollEvent(&event);
+
+        if( event.type == SDL_QUIT ){
+            status_ = QUIT;
+        }
+        int xm,ym;
+        SDL_GetMouseState(&xm,&ym);
+        if(Collision::CheckFocus(xm,ym,menu_button.getRect()) == true)
+        {
+            menu_button.loadFromFile("img/button/menu_pressed.png");
+            if(Game::event.type == SDL_MOUSEBUTTONDOWN){
+                    Game::status_ = MENU;
+                    Mix_PlayChannel(-1,click_sound,0);
+            }
+        }
+        else menu_button.loadFromFile("img/button/menu.png");
+
+        if(Collision::CheckFocus(xm,ym,new_game_button.getRect()) == true)
+        {
+            new_game_button.loadFromFile("img/button/new_game_pressed.png");
+            if(Game::event.type == SDL_MOUSEBUTTONDOWN){
+                Game::status_ = START;
+                Mix_PlayChannel(-1,click_sound,0);
+            }
+        }
+        else new_game_button.loadFromFile("img/button/new_game.png");
+
+        TTF_Font* font_text = TTF_OpenFont("font/MatchupPro.ttf", 80);
+
+        Texture victory_text;
+        victory_text.SetText(player_win+" win!");
+        //victory_text.setColor(150,0,0);
+        victory_text.loadFromRenderedText(font_text);
+        victory_text.setRect(SCREEN_WIDTH/2 - victory_text.getRect().w/2, 200);
+        victory_text.renderTexture(NULL);
+
+        new_game_button.renderTexture(NULL);
+        menu_button.renderTexture(NULL);
+
+        SDL_RenderPresent(Game::renderer);
+    }
+
+    TTF_CloseFont(font_text);
+    victory_text.Free();
+    new_game_button.Free();
+    menu_button.Free();
+    Mix_FreeChunk(click_sound);
+    Mix_FreeMusic(victory_sound);
+    //clean();
+}
+
+void Game::play_game()
+{
+    start_game();
+    while(isRunning){
+        handleEvents();
+        update();
+        render();
+    }
+    clean();
+}
+void Game::handleEvents()
+{
+
+    const Uint8* state = SDL_GetKeyboardState(NULL);
+    SDL_PollEvent(&event);
+
+    if( event.type == SDL_QUIT ){
+        status_ = QUIT;
+    }
+
+    if(event.type == SDL_KEYDOWN || event.type == SDL_KEYUP){
+        //player1
+
+        if(state[SDL_SCANCODE_D]){
+            player1->input_type_.right_ = 1;
+            player1->input_type_.left_ = 0;
+        }
+        else player1->input_type_.right_ = 0;
+
+        if(state[SDL_SCANCODE_A]){
+            player1->input_type_.left_ = 1;
+            player1->input_type_.right_ = 0;
+        }
+        else player1->input_type_.left_ = 0;
+
+        if(state[SDL_SCANCODE_W])
+            player1->input_type_.jump_= 1;
+        else player1->input_type_.jump_= 0;
+
+        if(state[SDL_SCANCODE_T])
+            player1->input_type_.shoot_ = 1;
+        else player1->input_type_.shoot_ = 0;
+
+        //player2
+        if(state[SDL_SCANCODE_RIGHT]){
+            player2->input_type_.right_ = 1;
+            player2->input_type_.left_ = 0;
+        }
+        else player2->input_type_.right_ = 0;
+
+        if(state[SDL_SCANCODE_LEFT]){
+            player2->input_type_.left_ = 1;
+            player2->input_type_.right_ = 0;
+        }
+        else player2->input_type_.left_ = 0;
+
+        if(state[SDL_SCANCODE_UP])
+            player2->input_type_.jump_= 1;
+        else player2->input_type_.jump_= 0;
+
+        if(state[SDL_SCANCODE_M])
+            player2->input_type_.shoot_ = 1;
+        else player2->input_type_.shoot_ = 0;
+    }
 }
